@@ -37,6 +37,30 @@ export async function searchForFixes(errorMessage: string): Promise<KnownFix[]> 
 }
 
 export async function searchRepo(query: string): Promise<string> {
-  const result = await execa("nia", getNiaArgs(["search", query]));
+  // Search contexts first (where first-run saves knowledge)
+  const contextResult = await execa("nia", getNiaArgs(["contexts", "search", query]));
+  const contextOutput = contextResult.stdout.trim();
+  if (contextOutput && !contextOutput.startsWith("No matching")) {
+    // Extract context IDs and fetch full content
+    const idMatches = [...contextOutput.matchAll(/id:\s+(\S+)/g)];
+    if (idMatches.length > 0) {
+      const details = await Promise.all(
+        idMatches.slice(0, 5).map(async (match) => {
+          try {
+            const detail = await execa("nia", getNiaArgs(["contexts", "get", match[1]]));
+            return detail.stdout.trim();
+          } catch {
+            return null;
+          }
+        }),
+      );
+      const results = details.filter(Boolean).join("\n\n---\n\n");
+      if (results) return results;
+    }
+    return contextOutput;
+  }
+
+  // Fall back to universal search across indexed sources
+  const result = await execa("nia", getNiaArgs(["search", "universal", query]));
   return result.stdout.trim();
 }
