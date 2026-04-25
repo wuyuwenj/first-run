@@ -169,13 +169,26 @@ Classify variables using both the key name and any surrounding comments in the e
 
 When comments in the example env file explain what a variable is for, use that context to classify it correctly instead of relying only on the variable name.
 
-### 5e. Guide the user through remaining values
+### 5e. Prisma + Next.js dual env file
+
+If the project uses both Prisma and Next.js, you MUST set up both env files:
+- `.env.local` — Next.js runtime reads this
+- `.env` — Prisma CLI (`prisma generate`, `prisma migrate`) reads this via `dotenv/config`
+
+Run this command yourself to copy database vars:
+```bash
+grep -E '^(DATABASE_URL|DIRECT_URL)=' .env.local >> .env
+```
+
+If you cannot read `.env.local` due to permissions, run the command anyway — it will work in the shell even if you can't read the file contents. Do NOT ask the user to run it manually if you can run it yourself.
+
+### 5f. Guide the user through remaining values
 
 **NEVER ask the user to paste credentials, API keys, secrets, or connection strings into the chat.** These end up in conversation history and logs. Instead:
 
 1. Create the env file with all non-secret values filled in and clear placeholder comments for secrets
 2. Tell the user exactly which variables still need filling and where to get the values
-3. Open the file for them to edit directly: `code .env.local` or `nano .env.local`
+3. **Run `open .env.local` or `code .env.local` yourself** to open the file for the user. Do not tell them to run it — just run it.
 
 Check Nia for guidance on specific variables:
 
