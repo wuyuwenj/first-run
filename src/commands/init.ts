@@ -1,6 +1,6 @@
 // T4: init command — maintainer sets up the project knowledge base
 
-import { access, mkdir, readFile, writeFile } from "node:fs/promises";
+import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import chalk from "chalk";
@@ -92,6 +92,76 @@ async function installOnboardSkill(repoPath: string): Promise<void> {
   await writeFile(skillFile, skillContent);
 }
 
+async function installErrorHook(repoPath: string): Promise<void> {
+  const hookDir = join(repoPath, ".claude", "hooks");
+  const hookFile = join(hookDir, "check-errors.sh");
+
+  const currentDir = dirname(fileURLToPath(import.meta.url));
+  const sourcePaths = [
+    join(currentDir, "..", "..", "..", ".claude", "hooks", "check-errors.sh"),
+    join(currentDir, "..", "..", ".claude", "hooks", "check-errors.sh"),
+    join(currentDir, "..", ".claude", "hooks", "check-errors.sh"),
+  ];
+
+  let hookContent: string | null = null;
+  for (const sourcePath of sourcePaths) {
+    try {
+      hookContent = await readFile(sourcePath, "utf-8");
+      break;
+    } catch {
+      continue;
+    }
+  }
+
+  if (!hookContent) {
+    throw new Error("Could not find bundled check-errors.sh. Try reinstalling first-run.");
+  }
+
+  await mkdir(hookDir, { recursive: true });
+  await writeFile(hookFile, hookContent);
+  await chmod(hookFile, 0o755);
+}
+
+async function installHookSettings(repoPath: string): Promise<void> {
+  const settingsFile = join(repoPath, ".claude", "settings.json");
+
+  let settings: Record<string, unknown> = {};
+  try {
+    const raw = await readFile(settingsFile, "utf-8");
+    settings = JSON.parse(raw);
+  } catch {
+    // No existing settings, start fresh
+  }
+
+  const hooks = (settings.hooks ?? {}) as Record<string, unknown[]>;
+  const postToolUse = (hooks.PostToolUse ?? []) as Array<{ matcher?: string; hooks?: unknown[] }>;
+
+  // Check if our hook is already installed
+  const alreadyInstalled = postToolUse.some((entry) =>
+    entry.hooks?.some((h: unknown) =>
+      typeof h === "object" && h !== null && (h as Record<string, unknown>).command === "./.claude/hooks/check-errors.sh",
+    ),
+  );
+
+  if (!alreadyInstalled) {
+    postToolUse.push({
+      matcher: "Bash",
+      hooks: [
+        {
+          type: "command",
+          command: "./.claude/hooks/check-errors.sh",
+          timeout: 10,
+        },
+      ],
+    });
+    hooks.PostToolUse = postToolUse;
+    settings.hooks = hooks;
+
+    await mkdir(join(repoPath, ".claude"), { recursive: true });
+    await writeFile(settingsFile, JSON.stringify(settings, null, 2) + "\n");
+  }
+}
+
 export async function initCommand(repoPath: string): Promise<void> {
   const niaSpinner = ora("Checking Nia CLI").start();
   await ensureNiaInstalled()
@@ -145,11 +215,23 @@ export async function initCommand(repoPath: string): Promise<void> {
     throw error;
   }
 
+  // Install error detection hook
+  const hookSpinner = ora("Installing error detection hook").start();
+  try {
+    await installErrorHook(repoPath);
+    await installHookSettings(repoPath);
+    hookSpinner.succeed("Error detection hook installed");
+  } catch (error) {
+    hookSpinner.fail("Failed to install error detection hook");
+    throw error;
+  }
+
   console.log(chalk.bold("\nProject config"));
   console.log(`- Repo: ${chalk.cyan(config.repoName)}`);
   console.log(`- Source ID: ${chalk.cyan(config.niaSourceId ?? "unknown")}`);
   console.log(`- Config file: ${chalk.cyan(join(repoPath, ".first-run.json"))}`);
   console.log(`- Skill: ${chalk.cyan(join(repoPath, ".claude/skills/onboard/SKILL.md"))}`);
+  console.log(`- Hook: ${chalk.cyan(join(repoPath, ".claude/hooks/check-errors.sh"))}`);
 
   console.log(chalk.green("\n✓ first-run init completed."));
 
@@ -160,5 +242,5 @@ export async function initCommand(repoPath: string): Promise<void> {
   console.log(`  3. Claude will scan your machine, install dependencies,`);
   console.log(`     set up your .env, and get the project running.`);
   console.log("");
-  console.log(chalk.dim("Tip: Commit .claude/skills/onboard/ to your repo so every contributor gets /onboard automatically."));
+  console.log(chalk.dim("Tip: Commit .claude/ to your repo so every contributor gets /onboard and error detection automatically."));
 }
