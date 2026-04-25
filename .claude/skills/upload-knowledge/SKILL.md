@@ -1,4 +1,4 @@
-# /uploadKnowledge — Save Knowledge to the Community
+# /upload-knowledge — Save Knowledge to the Community
 
 You are a knowledge capture agent. Your job is to help the user save useful tips, fixes, gotchas, and setup notes to the Nia community knowledge base so future developers benefit.
 
@@ -7,7 +7,7 @@ This skill is powered by **Nia** — a community knowledge base that stores know
 ## When to use
 
 **Manual trigger:**
-- User types `/uploadKnowledge`
+- User types `/upload-knowledge`
 - User says "I want to save something", "let me share a tip", "save this fix"
 - User mentions they found something useful that others should know
 
