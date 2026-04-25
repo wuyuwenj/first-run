@@ -43,7 +43,14 @@ export function generatePlan(
     );
   }
 
-  if (packageManager && !versionSatisfies(machine.tools[packageManager], packageManagerVersion)) {
+  if (packageManager && packageManagerVersion !== "latest" && !versionSatisfies(machine.tools[packageManager], packageManagerVersion)) {
+    addStep(
+      `Install ${packageManager}`,
+      getInstallCommand(packageManager, packageManagerVersion, machine.os),
+      `${packageManager} is required to install project dependencies.`,
+      `${packageManager} --version`
+    );
+  } else if (packageManager && !machine.tools[packageManager]) {
     addStep(
       `Install ${packageManager}`,
       getInstallCommand(packageManager, packageManagerVersion, machine.os),
@@ -131,13 +138,16 @@ export function generatePlan(
   }
 
   const scriptSteps = buildScriptSteps(requirements, packageManager);
+  const hasBuildScript = scriptSteps.some((s) => s.command.includes("build"));
   for (const scriptStep of scriptSteps) {
     addStep(scriptStep.name, scriptStep.command, scriptStep.why, scriptStep.check);
   }
 
-  const verificationStep = buildVerificationStep(requirements, packageManager);
-  if (verificationStep) {
-    addStep(verificationStep.name, verificationStep.command, verificationStep.why, verificationStep.check);
+  if (!hasBuildScript) {
+    const verificationStep = buildVerificationStep(requirements, packageManager);
+    if (verificationStep) {
+      addStep(verificationStep.name, verificationStep.command, verificationStep.why, verificationStep.check);
+    }
   }
 
   const warnings = contradictions.map((contradiction) => {

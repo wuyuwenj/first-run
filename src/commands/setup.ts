@@ -161,11 +161,6 @@ export async function setupCommand(repoPath: string): Promise<void> {
 
   printPlan(plan);
 
-  const runSpinner = ora("Starting interactive setup").start();
-  await runPlan(plan)
-    .then(() => runSpinner.succeed("Setup run finished"))
-    .catch((error) => {
-      runSpinner.fail("Setup run failed");
-      throw error;
-    });
+  console.log("");
+  await runPlan(plan);
 }
