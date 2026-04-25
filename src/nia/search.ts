@@ -1,10 +1,11 @@
-// T2: Nia search — search the knowledge base for setup info or error fixes
+// Nia search — search the knowledge base for setup info or error fixes
 
 import { execa } from "execa";
 import type { KnownFix } from "../types.js";
+import { getNiaArgs } from "./config.js";
 
 export async function searchForFixes(errorMessage: string): Promise<KnownFix[]> {
-  const result = await execa("nia", ["contexts", "search", errorMessage]);
+  const result = await execa("nia", getNiaArgs(["contexts", "search", errorMessage]));
   const output = result.stdout.trim();
   if (!output) return [];
 
@@ -25,7 +26,6 @@ export async function searchForFixes(errorMessage: string): Promise<KnownFix[]> 
       createdAt: item.createdAt as string | undefined,
     }));
   } catch {
-    // If output isn't JSON, treat each non-empty line as a fix description
     return output
       .split("\n")
       .filter(Boolean)
@@ -37,6 +37,6 @@ export async function searchForFixes(errorMessage: string): Promise<KnownFix[]> 
 }
 
 export async function searchRepo(query: string): Promise<string> {
-  const result = await execa("nia", ["search", query]);
+  const result = await execa("nia", getNiaArgs(["search", query]));
   return result.stdout.trim();
 }

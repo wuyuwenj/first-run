@@ -1,7 +1,8 @@
-// T2: Nia save — save new fixes/knowledge to the Nia knowledge base
+// Nia save — save new fixes/knowledge to the Nia knowledge base
 
 import { execa } from "execa";
 import type { KnownFix } from "../types.js";
+import { getNiaArgs } from "./config.js";
 
 export async function saveFix(fix: KnownFix): Promise<void> {
   const title = `Fix: ${fix.errorPattern}`;
@@ -31,7 +32,7 @@ export async function saveFix(fix: KnownFix): Promise<void> {
     (t): t is string => !!t,
   );
 
-  await execa("nia", [
+  await execa("nia", getNiaArgs([
     "contexts",
     "save",
     "--title",
@@ -40,7 +41,7 @@ export async function saveFix(fix: KnownFix): Promise<void> {
     content,
     "--tags",
     tags.join(","),
-  ]);
+  ]));
 }
 
 export async function saveKnowledge(
@@ -52,5 +53,5 @@ export async function saveKnowledge(
   if (tags?.length) {
     args.push("--tags", tags.join(","));
   }
-  await execa("nia", args);
+  await execa("nia", getNiaArgs(args));
 }
