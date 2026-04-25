@@ -7,6 +7,7 @@ import chalk from "chalk";
 import { askCommand } from "../src/commands/ask.js";
 import { initCommand } from "../src/commands/init.js";
 import { learnCommand } from "../src/commands/learn.js";
+import { saveKnowledgeCommand } from "../src/commands/save-knowledge.js";
 
 const program = new Command();
 
@@ -48,6 +49,17 @@ program
   .option("-f, --fix <fix>", "The fix/solution")
   .action(async (opts: { error?: string; fix?: string }) => {
     await learnCommand(opts.error, opts.fix);
+  });
+
+// first-run save — save knowledge to the repo's Nia source
+program
+  .command("save")
+  .description("Save knowledge (tips, gotchas, fixes) to the repo's Nia source")
+  .option("-t, --title <title>", "Title for the knowledge entry")
+  .option("-c, --content <content>", "Content of the knowledge entry")
+  .option("--category <category>", "Category: fix, tip, gotcha, env, prereq", "tip")
+  .action(async (opts: { title?: string; content?: string; category?: string }) => {
+    await saveKnowledgeCommand(process.cwd(), opts.title, opts.content, opts.category);
   });
 
 try {

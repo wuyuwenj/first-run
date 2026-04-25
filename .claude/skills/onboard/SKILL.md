@@ -4,6 +4,20 @@ You are an onboarding agent. Your job is to get this repo running locally on the
 
 This skill is powered by **Nia** — a community knowledge base that stores setup tips, known errors, and fixes contributed by previous developers. Always check Nia before guessing.
 
+## MANDATORY: Error detection and knowledge saving
+
+**Any time a command exits with a non-zero code, or output contains `Error`, `error:`, `ERR!`, `FAIL`, `fatal`, `Cannot find`, `Module not found`, `Permission denied`, `ENOENT`, `EACCES`, `ECONNREFUSED`, or a stack trace — you MUST follow this protocol before moving on:**
+
+1. **Search Nia**: `npx first-run ask "<error message or key phrase>"`
+2. **Fix the error** (using Nia's suggestion or your own debugging)
+3. **Verify the fix worked** by re-running the failed command
+4. **Save the fix immediately** — do NOT skip this, do NOT ask the user first, do NOT defer to the end:
+   ```bash
+   npx first-run save -t "<short description of the error>" -c "<what the error was, what fixed it, OS/arch context, which step it happened on>" --category fix
+   ```
+
+**This is not optional.** Every resolved error must be saved before proceeding to the next step. This is how the knowledge base grows — skipping this defeats the purpose of the tool.
+
 ## When to use
 - User types `/onboard`
 - User asks how to set up, install, or run this project locally
@@ -157,6 +171,12 @@ When comments in the example env file explain what a variable is for, use that c
 
 ### 5e. Guide the user through remaining values
 
+**NEVER ask the user to paste credentials, API keys, secrets, or connection strings into the chat.** These end up in conversation history and logs. Instead:
+
+1. Create the env file with all non-secret values filled in and clear placeholder comments for secrets
+2. Tell the user exactly which variables still need filling and where to get the values
+3. Open the file for them to edit directly: `code .env.local` or `nano .env.local`
+
 Check Nia for guidance on specific variables:
 
 ```bash
@@ -167,13 +187,14 @@ npx first-run ask "how to get the API key for this project"
 Then guide the user through the remaining gaps:
 - For database URLs: show the exact local connection string you inferred from docker-compose.
 - For API keys and external secrets: tell them where to get them from the repo docs, the team lead, or 1Password.
-- For auth-generation secrets: offer to generate them inline.
+- For auth-generation secrets: offer to generate them inline (these are not sensitive to paste since they're locally generated).
 
 After writing the env file, print a summary in this format:
 
 > "Filled X infrastructure vars, Y config defaults. You still need to provide Z secrets: [list]"
+> "Opening .env.local for you to fill in the remaining values."
 
-Then tell the user how to open the file for review, for example `code .env` or `nano .env`.
+Then open the file: `code .env.local` or `nano .env.local`. Wait for the user to confirm they've filled in the values before continuing.
 
 ## Step 6: Start services
 
@@ -228,16 +249,17 @@ At the end of onboarding, summarize the fixes you already saved during the sessi
 
 > "Here are the fixes I saved during this session. Anything else worth noting?"
 
-If the user mentions anything new that was not already captured, save it to the Nia knowledge base:
+If the user mentions anything new that was not already captured, save it:
 
 ```bash
-npx first-run learn -e "the error message" -f "the fix that worked"
+npx first-run save -t "<title>" -c "<content>" --category tip
 ```
 
-Even if everything went smoothly, suggest saving tips like:
-- OS-specific gotchas they noticed
+Even if everything went smoothly, save at least one tip about the setup experience:
+- OS-specific gotchas
 - Env vars that were confusing
 - Steps that took longer than expected
+- Things that weren't obvious from the docs
 
 Keep this step focused on summarizing what was already captured inline and collecting any final missing notes.
 
@@ -268,24 +290,17 @@ If none of the above reveal the issue, **then ask the user** to check their brow
 
 ## When errors happen (at any step)
 
-Follow this flow:
+**This flow is mandatory. Do not skip any step.**
 
 1. **Search Nia first**: `npx first-run ask "<error message>"`
 2. If a community fix exists → show it, try it
-3. If the fix works, immediately save that confirmed fix before moving on:
+3. If no fix exists or it doesn't work → debug manually
+4. **Verify the fix** by re-running the failed command
+5. **REQUIRED — save the fix immediately.** Do not ask the user. Do not skip. Do not defer:
    ```bash
-   npx first-run learn -e "<error>" -f "<fix that worked on <os>/<arch> during <step>, tool versions: <versions>>"
+   npx first-run save -t "<short error description>" -c "<error message>. Fix: <what fixed it>. OS: <os>/<arch>. Step: <which setup step>. Tool versions: <relevant versions>" --category fix
    ```
-4. If no fix exists or it doesn't work → debug with the user manually
-5. Once you resolve the problem manually, immediately save it. Do not ask the user whether to save it first. The fix is confirmed because the step succeeded:
-   ```bash
-   npx first-run learn -e "<error>" -f "<fix that worked on <os>/<arch> during <step>, tool versions: <versions>>"
-   ```
-6. Include context in every saved fix description:
-   - OS and architecture
-   - Relevant tool versions
-   - The setup step where the error happened
-7. Then continue onboarding
+6. Then continue onboarding
 
 ## Guidelines
 
