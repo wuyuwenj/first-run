@@ -92,15 +92,15 @@ async function installSkill(repoPath: string, skillName: string): Promise<void> 
   await writeFile(skillFile, skillContent);
 }
 
-async function installErrorHook(repoPath: string): Promise<void> {
+async function installHookScript(repoPath: string, scriptName: string): Promise<void> {
   const hookDir = join(repoPath, ".claude", "hooks");
-  const hookFile = join(hookDir, "check-errors.sh");
+  const hookFile = join(hookDir, scriptName);
 
   const currentDir = dirname(fileURLToPath(import.meta.url));
   const sourcePaths = [
-    join(currentDir, "..", "..", "..", ".claude", "hooks", "check-errors.sh"),
-    join(currentDir, "..", "..", ".claude", "hooks", "check-errors.sh"),
-    join(currentDir, "..", ".claude", "hooks", "check-errors.sh"),
+    join(currentDir, "..", "..", "..", ".claude", "hooks", scriptName),
+    join(currentDir, "..", "..", ".claude", "hooks", scriptName),
+    join(currentDir, "..", ".claude", "hooks", scriptName),
   ];
 
   let hookContent: string | null = null;
@@ -114,12 +114,23 @@ async function installErrorHook(repoPath: string): Promise<void> {
   }
 
   if (!hookContent) {
-    throw new Error("Could not find bundled check-errors.sh. Try reinstalling first-run.");
+    throw new Error(`Could not find bundled ${scriptName}. Try reinstalling first-run.`);
   }
 
   await mkdir(hookDir, { recursive: true });
   await writeFile(hookFile, hookContent);
   await chmod(hookFile, 0o755);
+}
+
+function hasHookCommand(
+  entries: Array<{ matcher?: string; hooks?: unknown[] }>,
+  command: string,
+): boolean {
+  return entries.some((entry) =>
+    entry.hooks?.some((h: unknown) =>
+      typeof h === "object" && h !== null && (h as Record<string, unknown>).command === command,
+    ),
+  );
 }
 
 async function installHookSettings(repoPath: string): Promise<void> {
@@ -134,32 +145,31 @@ async function installHookSettings(repoPath: string): Promise<void> {
   }
 
   const hooks = (settings.hooks ?? {}) as Record<string, unknown[]>;
+
+  // PostToolUse: error detection on Bash
   const postToolUse = (hooks.PostToolUse ?? []) as Array<{ matcher?: string; hooks?: unknown[] }>;
-
-  // Check if our hook is already installed
-  const alreadyInstalled = postToolUse.some((entry) =>
-    entry.hooks?.some((h: unknown) =>
-      typeof h === "object" && h !== null && (h as Record<string, unknown>).command === "./.claude/hooks/check-errors.sh",
-    ),
-  );
-
-  if (!alreadyInstalled) {
+  if (!hasHookCommand(postToolUse, "./.claude/hooks/check-errors.sh")) {
     postToolUse.push({
       matcher: "Bash",
-      hooks: [
-        {
-          type: "command",
-          command: "./.claude/hooks/check-errors.sh",
-          timeout: 10,
-        },
-      ],
+      hooks: [{ type: "command", command: "./.claude/hooks/check-errors.sh", timeout: 10 }],
     });
-    hooks.PostToolUse = postToolUse;
-    settings.hooks = hooks;
-
-    await mkdir(join(repoPath, ".claude"), { recursive: true });
-    await writeFile(settingsFile, JSON.stringify(settings, null, 2) + "\n");
   }
+  hooks.PostToolUse = postToolUse;
+
+  // PreToolUse: Nia search reminder on Read/Glob
+  const preToolUse = (hooks.PreToolUse ?? []) as Array<{ matcher?: string; hooks?: unknown[] }>;
+  if (!hasHookCommand(preToolUse, "./.claude/hooks/check-nia-search.sh")) {
+    preToolUse.push({
+      matcher: "Read|Glob",
+      hooks: [{ type: "command", command: "./.claude/hooks/check-nia-search.sh", timeout: 5 }],
+    });
+  }
+  hooks.PreToolUse = preToolUse;
+
+  settings.hooks = hooks;
+
+  await mkdir(join(repoPath, ".claude"), { recursive: true });
+  await writeFile(settingsFile, JSON.stringify(settings, null, 2) + "\n");
 }
 
 export async function initCommand(repoPath: string): Promise<void> {
@@ -216,14 +226,15 @@ export async function initCommand(repoPath: string): Promise<void> {
     throw error;
   }
 
-  // Install error detection hook
-  const hookSpinner = ora("Installing error detection hook").start();
+  // Install hooks
+  const hookSpinner = ora("Installing hooks").start();
   try {
-    await installErrorHook(repoPath);
+    await installHookScript(repoPath, "check-errors.sh");
+    await installHookScript(repoPath, "check-nia-search.sh");
     await installHookSettings(repoPath);
-    hookSpinner.succeed("Error detection hook installed");
+    hookSpinner.succeed("Hooks installed (error detection + Nia search reminder)");
   } catch (error) {
-    hookSpinner.fail("Failed to install error detection hook");
+    hookSpinner.fail("Failed to install hooks");
     throw error;
   }
 
