@@ -11,7 +11,12 @@
     "dev": "tsc --watch",
     "start": "node dist/bin/first-run.js"
   },
-  "keywords": ["cli", "setup", "onboarding", "developer-tools"],
+  "keywords": [
+    "cli",
+    "setup",
+    "onboarding",
+    "developer-tools"
+  ],
   "license": "MIT",
   "dependencies": {
     "chalk": "^5.3.0",
@@ -21,6 +26,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
+    "tsx": "^4.21.0",
     "typescript": "^5.7.0"
   }
 }

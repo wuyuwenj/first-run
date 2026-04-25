@@ -3,21 +3,26 @@
 // T4: CLI entry point — wires all commands together
 
 import { Command } from "commander";
+import chalk from "chalk";
+import { askCommand } from "../src/commands/ask.js";
+import { initCommand } from "../src/commands/init.js";
+import { learnCommand } from "../src/commands/learn.js";
+import { setupCommand } from "../src/commands/setup.js";
 
 const program = new Command();
 
 program
   .name("first-run")
   .description("Get any repo running locally. Community-powered setup that gets smarter over time.")
-  .version("0.1.0");
+  .version("0.1.0")
+  .showHelpAfterError();
 
 // first-run init — maintainer indexes repo to Nia
 program
   .command("init")
   .description("Index this repo and set up the community knowledge base")
   .action(async () => {
-    // TODO T4: Wire to commands/init.ts
-    console.log("TODO: init");
+    await initCommand(process.cwd());
   });
 
 // first-run (default) — contributor setup flow
@@ -25,8 +30,7 @@ program
   .command("setup", { isDefault: true })
   .description("Scan repo, profile your machine, and get a personalized setup plan")
   .action(async () => {
-    // TODO T4: Wire to commands/setup.ts
-    console.log("TODO: setup");
+    await setupCommand(process.cwd());
   });
 
 // first-run ask <question> — query the knowledge base
@@ -34,8 +38,7 @@ program
   .command("ask <question>")
   .description("Ask a question about this repo")
   .action(async (question: string) => {
-    // TODO T4: Wire to commands/ask.ts
-    console.log("TODO: ask", question);
+    await askCommand(question);
   });
 
 // first-run learn — save a fix or tip to the knowledge base
@@ -45,8 +48,13 @@ program
   .option("-e, --error <error>", "The error message")
   .option("-f, --fix <fix>", "The fix/solution")
   .action(async (opts: { error?: string; fix?: string }) => {
-    // TODO T4: Wire to commands/learn.ts
-    console.log("TODO: learn", opts);
+    await learnCommand(opts.error, opts.fix);
   });
 
-program.parse();
+try {
+  await program.parseAsync(process.argv);
+} catch (error) {
+  const message = error instanceof Error ? error.message : String(error);
+  console.error(chalk.red(message));
+  process.exitCode = 1;
+}
