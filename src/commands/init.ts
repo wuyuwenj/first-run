@@ -61,17 +61,17 @@ function printScanSummary(scan: RepoRequirements): void {
   }
 }
 
-async function installOnboardSkill(repoPath: string): Promise<void> {
-  const skillDir = join(repoPath, ".claude", "skills", "onboard");
+async function installSkill(repoPath: string, skillName: string): Promise<void> {
+  const skillDir = join(repoPath, ".claude", "skills", skillName);
   const skillFile = join(skillDir, "SKILL.md");
 
   // Read the SKILL.md bundled with this package
   // import.meta.url is dist/src/commands/init.js, so go up 3 levels to package root
   const currentDir = dirname(fileURLToPath(import.meta.url));
   const sourcePaths = [
-    join(currentDir, "..", "..", "..", ".claude", "skills", "onboard", "SKILL.md"),
-    join(currentDir, "..", "..", ".claude", "skills", "onboard", "SKILL.md"),
-    join(currentDir, "..", ".claude", "skills", "onboard", "SKILL.md"),
+    join(currentDir, "..", "..", "..", ".claude", "skills", skillName, "SKILL.md"),
+    join(currentDir, "..", "..", ".claude", "skills", skillName, "SKILL.md"),
+    join(currentDir, "..", ".claude", "skills", skillName, "SKILL.md"),
   ];
 
   let skillContent: string | null = null;
@@ -85,7 +85,7 @@ async function installOnboardSkill(repoPath: string): Promise<void> {
   }
 
   if (!skillContent) {
-    throw new Error("Could not find bundled SKILL.md. Try reinstalling first-run.");
+    throw new Error(`Could not find bundled ${skillName}/SKILL.md. Try reinstalling first-run.`);
   }
 
   await mkdir(skillDir, { recursive: true });
@@ -205,13 +205,14 @@ export async function initCommand(repoPath: string): Promise<void> {
 
   printScanSummary(scan);
 
-  // Install /onboard skill into the repo
-  const skillSpinner = ora("Installing /onboard skill").start();
+  // Install skills into the repo
+  const skillSpinner = ora("Installing skills").start();
   try {
-    await installOnboardSkill(repoPath);
-    skillSpinner.succeed("/onboard skill installed");
+    await installSkill(repoPath, "onboard");
+    await installSkill(repoPath, "diagnose");
+    skillSpinner.succeed("/onboard and /diagnose skills installed");
   } catch (error) {
-    skillSpinner.fail("Failed to install /onboard skill");
+    skillSpinner.fail("Failed to install skills");
     throw error;
   }
 
@@ -230,17 +231,24 @@ export async function initCommand(repoPath: string): Promise<void> {
   console.log(`- Repo: ${chalk.cyan(config.repoName)}`);
   console.log(`- Source ID: ${chalk.cyan(config.niaSourceId ?? "unknown")}`);
   console.log(`- Config file: ${chalk.cyan(join(repoPath, ".first-run.json"))}`);
-  console.log(`- Skill: ${chalk.cyan(join(repoPath, ".claude/skills/onboard/SKILL.md"))}`);
+  console.log(`- Skills: ${chalk.cyan(join(repoPath, ".claude/skills/{onboard,diagnose}/SKILL.md"))}`);
   console.log(`- Hook: ${chalk.cyan(join(repoPath, ".claude/hooks/check-errors.sh"))}`);
 
+
   console.log(chalk.green("\n✓ first-run init completed."));
+
+  console.log(chalk.bold("\nInstalled skills"));
+  console.log(`  ${chalk.cyan("/onboard")}  — Guided repo setup: installs deps, configures env, starts services`);
+  console.log(`  ${chalk.cyan("/diagnose")} — Error diagnosis: searches community fixes first, then investigates locally`);
+  console.log(chalk.dim(`              Auto-triggers when Claude hits an error — no need to type /diagnose.`));
+  console.log(chalk.dim(`              Fixes get saved to the Nia knowledge base so the next person benefits.`));
 
   console.log(chalk.bold("\nNext steps"));
   console.log(`  1. Open Claude Code in this repo:`);
   console.log(chalk.cyan(`     claude`));
   console.log(`  2. Type ${chalk.cyan("/onboard")} to start the guided setup`);
-  console.log(`  3. Claude will scan your machine, install dependencies,`);
-  console.log(`     set up your .env, and get the project running.`);
+  console.log(`  3. If you hit an error, Claude will automatically diagnose it`);
+  console.log(`     using community fixes — or type ${chalk.cyan("/diagnose")} to trigger it manually.`);
   console.log("");
-  console.log(chalk.dim("Tip: Commit .claude/ to your repo so every contributor gets /onboard and error detection automatically."));
+  console.log(chalk.dim("Tip: Commit .claude/ to your repo so every contributor gets /onboard, /diagnose, and error detection automatically."));
 }
