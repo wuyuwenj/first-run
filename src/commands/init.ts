@@ -1,11 +1,12 @@
 // T4: init command — maintainer sets up the project knowledge base
 
-import { access } from "node:fs/promises";
-import { join } from "node:path";
+import { access, mkdir, readFile, writeFile } from "node:fs/promises";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import chalk from "chalk";
 import ora from "ora";
 import { ensureNiaInstalled } from "../nia/install.js";
-import { indexRepo } from "../nia/index.js";
+import { indexRepo, isRepoIndexed } from "../nia/index.js";
 import { scanRepo } from "../scanner/files.js";
 import type { RepoRequirements } from "../types.js";
 
@@ -60,6 +61,37 @@ function printScanSummary(scan: RepoRequirements): void {
   }
 }
 
+async function installOnboardSkill(repoPath: string): Promise<void> {
+  const skillDir = join(repoPath, ".claude", "skills", "onboard");
+  const skillFile = join(skillDir, "SKILL.md");
+
+  // Read the SKILL.md bundled with this package
+  // import.meta.url is dist/src/commands/init.js, so go up 3 levels to package root
+  const currentDir = dirname(fileURLToPath(import.meta.url));
+  const sourcePaths = [
+    join(currentDir, "..", "..", "..", ".claude", "skills", "onboard", "SKILL.md"),
+    join(currentDir, "..", "..", ".claude", "skills", "onboard", "SKILL.md"),
+    join(currentDir, "..", ".claude", "skills", "onboard", "SKILL.md"),
+  ];
+
+  let skillContent: string | null = null;
+  for (const sourcePath of sourcePaths) {
+    try {
+      skillContent = await readFile(sourcePath, "utf-8");
+      break;
+    } catch {
+      continue;
+    }
+  }
+
+  if (!skillContent) {
+    throw new Error("Could not find bundled SKILL.md. Try reinstalling first-run.");
+  }
+
+  await mkdir(skillDir, { recursive: true });
+  await writeFile(skillFile, skillContent);
+}
+
 export async function initCommand(repoPath: string): Promise<void> {
   const niaSpinner = ora("Checking Nia CLI").start();
   await ensureNiaInstalled()
@@ -69,16 +101,26 @@ export async function initCommand(repoPath: string): Promise<void> {
       throw error;
     });
 
-  const indexSpinner = ora("Indexing repository in Nia").start();
-  const config = await indexRepo(repoPath)
-    .then((result) => {
-      indexSpinner.succeed("Repository indexed");
-      return result;
-    })
-    .catch((error) => {
-      indexSpinner.fail("Failed to index repository");
-      throw error;
-    });
+  // Check if already indexed
+  const alreadyIndexed = await isRepoIndexed(repoPath);
+  let config;
+
+  if (alreadyIndexed) {
+    const configPath = join(repoPath, ".first-run.json");
+    config = JSON.parse(await readFile(configPath, "utf-8"));
+    console.log(chalk.dim("  Already indexed in Nia, skipping."));
+  } else {
+    const indexSpinner = ora("Indexing repository in Nia").start();
+    config = await indexRepo(repoPath)
+      .then((result) => {
+        indexSpinner.succeed("Repository indexed in Nia");
+        return result;
+      })
+      .catch((error) => {
+        indexSpinner.fail("Failed to index repository");
+        throw error;
+      });
+  }
 
   const scanSpinner = ora("Scanning repository requirements").start();
   const scan = await scanRepo(repoPath)
@@ -93,27 +135,30 @@ export async function initCommand(repoPath: string): Promise<void> {
 
   printScanSummary(scan);
 
-  const onboardSkillPath = join(repoPath, ".claude/skills/onboard");
-  let hasOnboardSkill = false;
+  // Install /onboard skill into the repo
+  const skillSpinner = ora("Installing /onboard skill").start();
   try {
-    await access(onboardSkillPath);
-    hasOnboardSkill = true;
-  } catch {
-    hasOnboardSkill = false;
+    await installOnboardSkill(repoPath);
+    skillSpinner.succeed("/onboard skill installed");
+  } catch (error) {
+    skillSpinner.fail("Failed to install /onboard skill");
+    throw error;
   }
 
   console.log(chalk.bold("\nProject config"));
   console.log(`- Repo: ${chalk.cyan(config.repoName)}`);
   console.log(`- Source ID: ${chalk.cyan(config.niaSourceId ?? "unknown")}`);
   console.log(`- Config file: ${chalk.cyan(join(repoPath, ".first-run.json"))}`);
+  console.log(`- Skill: ${chalk.cyan(join(repoPath, ".claude/skills/onboard/SKILL.md"))}`);
 
-  if (!hasOnboardSkill) {
-    console.log(
-      chalk.yellow(
-        "\nTip: add .claude/skills/onboard/ to this repo so maintainers can keep setup guidance close to the codebase.",
-      ),
-    );
-  }
+  console.log(chalk.green("\n✓ first-run init completed."));
 
-  console.log(chalk.green("\nfirst-run init completed."));
+  console.log(chalk.bold("\nNext steps"));
+  console.log(`  1. Open Claude Code in this repo:`);
+  console.log(chalk.cyan(`     claude`));
+  console.log(`  2. Type ${chalk.cyan("/onboard")} to start the guided setup`);
+  console.log(`  3. Claude will scan your machine, install dependencies,`);
+  console.log(`     set up your .env, and get the project running.`);
+  console.log("");
+  console.log(chalk.dim("Tip: Commit .claude/skills/onboard/ to your repo so every contributor gets /onboard automatically."));
 }

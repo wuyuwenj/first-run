@@ -7,7 +7,6 @@ import chalk from "chalk";
 import { askCommand } from "../src/commands/ask.js";
 import { initCommand } from "../src/commands/init.js";
 import { learnCommand } from "../src/commands/learn.js";
-import { setupCommand } from "../src/commands/setup.js";
 
 const program = new Command();
 
@@ -25,12 +24,12 @@ program
     await initCommand(process.cwd());
   });
 
-// first-run (default) — contributor setup flow
+// first-run (default) — install /onboard skill into this repo
 program
-  .command("setup", { isDefault: true })
-  .description("Scan repo, profile your machine, and get a personalized setup plan")
+  .command("install", { isDefault: true })
+  .description("Install the /onboard skill into this repo so contributors can use it in Claude Code")
   .action(async () => {
-    await setupCommand(process.cwd());
+    await initCommand(process.cwd());
   });
 
 // first-run ask <question> — query the knowledge base

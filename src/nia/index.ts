@@ -7,18 +7,40 @@ import type { ProjectConfig } from "../types.js";
 
 const CONFIG_FILE = ".first-run.json";
 
-export async function indexRepo(repoPath: string): Promise<ProjectConfig> {
-  const result = await execa("nia", ["repos", "index"], { cwd: repoPath });
+async function getGitHubSlug(repoPath: string): Promise<string | null> {
+  try {
+    const result = await execa("git", ["remote", "get-url", "origin"], { cwd: repoPath });
+    const url = result.stdout.trim();
+    // Match github.com/owner/repo from HTTPS or SSH URLs
+    const match = url.match(/github\.com[/:](.+?\/.+?)(?:\.git)?$/);
+    return match?.[1] ?? null;
+  } catch {
+    return null;
+  }
+}
 
-  // Parse source ID from nia output
-  const sourceIdMatch = result.stdout.match(/source[_\s-]?id[:\s]+(\S+)/i);
-  const sourceId = sourceIdMatch?.[1] ?? result.stdout.trim();
+export async function indexRepo(repoPath: string): Promise<ProjectConfig> {
+  const slug = await getGitHubSlug(repoPath);
+  let sourceId: string;
+
+  if (slug) {
+    // GitHub repo — use nia repos index for better indexing
+    const result = await execa("nia", ["repos", "index", slug], { cwd: repoPath });
+    const sourceIdMatch = result.stdout.match(/source[_\s-]?id[:\s]+(\S+)/i);
+    sourceId = sourceIdMatch?.[1] ?? result.stdout.trim();
+  } else {
+    // Local-only repo — use nia local add
+    const result = await execa("nia", ["local", "add", repoPath]);
+    const sourceIdMatch = result.stdout.match(/source[_\s-]?id[:\s]+(\S+)/i);
+    sourceId = sourceIdMatch?.[1] ?? result.stdout.trim();
+  }
 
   const repoName = repoPath.split("/").pop() ?? "unknown";
 
   const config: ProjectConfig = {
     niaSourceId: sourceId,
     repoName,
+    repoUrl: slug ? `https://github.com/${slug}` : undefined,
     createdAt: new Date().toISOString(),
     lastIndexed: new Date().toISOString(),
   };
