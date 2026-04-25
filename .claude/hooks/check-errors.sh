@@ -11,6 +11,11 @@ command=$(echo "$input" | jq -r '.tool_input.command // ""')
 
 combined="$stdout $stderr"
 
+# Track when first-run ask is called (so the nia-search reminder stops firing)
+if echo "$command" | grep -q "first-run ask"; then
+  touch "/tmp/first-run-nia-asked"
+fi
+
 # Only trigger on non-zero exit codes or error keywords in output
 has_error=false
 

@@ -1,10 +1,10 @@
-// save-knowledge command — save tips, gotchas, and fixes to the repo's Nia source
+// save-knowledge command — save tips, gotchas, and fixes to Nia contexts
 
 import { createInterface } from "node:readline/promises";
 import chalk from "chalk";
 import ora from "ora";
 import { ensureNiaInstalled } from "../nia/install.js";
-import { saveToSource } from "../nia/save.js";
+import { saveKnowledge } from "../nia/save.js";
 
 const VALID_CATEGORIES = ["fix", "tip", "gotcha", "env", "prereq"] as const;
 type Category = (typeof VALID_CATEGORIES)[number];
@@ -57,7 +57,7 @@ async function promptForInputs(
 }
 
 export async function saveKnowledgeCommand(
-  repoPath: string,
+  _repoPath: string,
   title?: string,
   content?: string,
   category?: string,
@@ -72,19 +72,17 @@ export async function saveKnowledgeCommand(
       throw error;
     });
 
-  const saveSpinner = ora("Saving knowledge to repo source").start();
-  const result = await saveToSource(repoPath, inputs.title, inputs.content, inputs.category)
-    .then((res) => {
-      saveSpinner.succeed("Knowledge saved to repo source");
-      return res;
+  const saveSpinner = ora("Saving knowledge to Nia").start();
+  await saveKnowledge(inputs.title, inputs.content, inputs.category)
+    .then(() => {
+      saveSpinner.succeed("Knowledge saved");
     })
     .catch((error) => {
       saveSpinner.fail("Failed to save knowledge");
       throw error;
     });
 
-  console.log(chalk.green("\nSaved to the repo knowledge base."));
+  console.log(chalk.green("\nSaved to the knowledge base."));
   console.log(chalk.dim(`Title: ${inputs.title}`));
   console.log(chalk.dim(`Category: ${inputs.category}`));
-  console.log(chalk.dim(`Path: ${result.path}`));
 }

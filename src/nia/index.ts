@@ -19,18 +19,32 @@ async function getGitHubSlug(repoPath: string): Promise<string | null> {
   }
 }
 
+function extractId(stdout: string): string | null {
+  // Try project_id, source_id, or id fields
+  const match = stdout.match(/(?:project_id|source[_\s-]?id|^id)[:\s]+(\S+)/im);
+  return match?.[1] ?? null;
+}
+
+async function resolveSourceId(identifier: string): Promise<string | null> {
+  try {
+    const result = await execa("nia", getNiaArgs(["sources", "resolve", identifier]));
+    const match = result.stdout.match(/^id[:\s]+(\S+)/m);
+    return match?.[1] ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function indexRepo(repoPath: string): Promise<ProjectConfig> {
   const slug = await getGitHubSlug(repoPath);
   let sourceId: string;
 
   if (slug) {
     const result = await execa("nia", getNiaArgs(["repos", "index", slug]), { cwd: repoPath });
-    const sourceIdMatch = result.stdout.match(/source[_\s-]?id[:\s]+(\S+)/i);
-    sourceId = sourceIdMatch?.[1] ?? result.stdout.trim();
+    sourceId = extractId(result.stdout) ?? await resolveSourceId(slug) ?? result.stdout.trim();
   } else {
     const result = await execa("nia", getNiaArgs(["local", "add", repoPath]));
-    const sourceIdMatch = result.stdout.match(/source[_\s-]?id[:\s]+(\S+)/i);
-    sourceId = sourceIdMatch?.[1] ?? result.stdout.trim();
+    sourceId = extractId(result.stdout) ?? result.stdout.trim();
   }
 
   const repoName = repoPath.split("/").pop() ?? "unknown";
