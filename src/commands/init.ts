@@ -220,7 +220,8 @@ export async function initCommand(repoPath: string): Promise<void> {
   try {
     await installSkill(repoPath, "onboard");
     await installSkill(repoPath, "diagnose");
-    skillSpinner.succeed("/onboard and /diagnose skills installed");
+    await installSkill(repoPath, "upload-knowledge");
+    skillSpinner.succeed("/onboard, /diagnose, and /uploadKnowledge skills installed");
   } catch (error) {
     skillSpinner.fail("Failed to install skills");
     throw error;
@@ -242,17 +243,18 @@ export async function initCommand(repoPath: string): Promise<void> {
   console.log(`- Repo: ${chalk.cyan(config.repoName)}`);
   console.log(`- Source ID: ${chalk.cyan(config.niaSourceId ?? "unknown")}`);
   console.log(`- Config file: ${chalk.cyan(join(repoPath, ".first-run.json"))}`);
-  console.log(`- Skills: ${chalk.cyan(join(repoPath, ".claude/skills/{onboard,diagnose}/SKILL.md"))}`);
+  console.log(`- Skills: ${chalk.cyan(join(repoPath, ".claude/skills/{onboard,diagnose,upload-knowledge}/SKILL.md"))}`);
   console.log(`- Hook: ${chalk.cyan(join(repoPath, ".claude/hooks/check-errors.sh"))}`);
 
 
   console.log(chalk.green("\n✓ first-run init completed."));
 
   console.log(chalk.bold("\nInstalled skills"));
-  console.log(`  ${chalk.cyan("/onboard")}  — Guided repo setup: installs deps, configures env, starts services`);
-  console.log(`  ${chalk.cyan("/diagnose")} — Error diagnosis: searches community fixes first, then investigates locally`);
-  console.log(chalk.dim(`              Auto-triggers when Claude hits an error — no need to type /diagnose.`));
-  console.log(chalk.dim(`              Fixes get saved to the Nia knowledge base so the next person benefits.`));
+  console.log(`  ${chalk.cyan("/onboard")}          — Guided repo setup: installs deps, configures env, starts services`);
+  console.log(`  ${chalk.cyan("/diagnose")}         — Error diagnosis: searches community fixes, then investigates locally`);
+  console.log(chalk.dim(`                       Auto-triggers when Claude hits an error — no need to type /diagnose.`));
+  console.log(`  ${chalk.cyan("/uploadKnowledge")}  — Save tips, fixes, and gotchas to the Nia community knowledge base`);
+  console.log(chalk.dim(`                       Share what you learned so the next developer benefits.`));
 
   console.log(chalk.bold("\nNext steps"));
   console.log(`  1. Open Claude Code in this repo:`);
@@ -260,6 +262,7 @@ export async function initCommand(repoPath: string): Promise<void> {
   console.log(`  2. Type ${chalk.cyan("/onboard")} to start the guided setup`);
   console.log(`  3. If you hit an error, Claude will automatically diagnose it`);
   console.log(`     using community fixes — or type ${chalk.cyan("/diagnose")} to trigger it manually.`);
+  console.log(`  4. Type ${chalk.cyan("/uploadKnowledge")} to share tips or fixes with the community`);
   console.log("");
-  console.log(chalk.dim("Tip: Commit .claude/ to your repo so every contributor gets /onboard, /diagnose, and error detection automatically."));
+  console.log(chalk.dim("Tip: Commit .claude/ to your repo so every contributor gets all skills automatically."));
 }
