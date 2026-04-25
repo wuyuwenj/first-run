@@ -224,11 +224,11 @@ If it fails, search Nia for known issues before debugging manually.
 
 ## Step 10: Save knowledge
 
-At the end of onboarding, ask the user:
+At the end of onboarding, summarize the fixes you already saved during the session:
 
-> "Did you hit any issues that weren't obvious from the docs? If so, I can save them so the next person doesn't have to figure it out."
+> "Here are the fixes I saved during this session. Anything else worth noting?"
 
-For each issue they encountered, save it to the Nia knowledge base:
+If the user mentions anything new that was not already captured, save it to the Nia knowledge base:
 
 ```bash
 npx first-run learn -e "the error message" -f "the fix that worked"
@@ -239,7 +239,7 @@ Even if everything went smoothly, suggest saving tips like:
 - Env vars that were confusing
 - Steps that took longer than expected
 
-**This is how the knowledge base grows. Every contributor makes the next one faster.**
+Keep this step focused on summarizing what was already captured inline and collecting any final missing notes.
 
 ## When the user reports something isn't working
 
@@ -272,9 +272,20 @@ Follow this flow:
 
 1. **Search Nia first**: `npx first-run ask "<error message>"`
 2. If a community fix exists → show it, try it
-3. If the fix works → great, move on
+3. If the fix works, immediately save that confirmed fix before moving on:
+   ```bash
+   npx first-run learn -e "<error>" -f "<fix that worked on <os>/<arch> during <step>, tool versions: <versions>>"
+   ```
 4. If no fix exists or it doesn't work → debug with the user manually
-5. Once resolved → **always offer to save**: `npx first-run learn -e "<error>" -f "<fix>"`
+5. Once you resolve the problem manually, immediately save it. Do not ask the user whether to save it first. The fix is confirmed because the step succeeded:
+   ```bash
+   npx first-run learn -e "<error>" -f "<fix that worked on <os>/<arch> during <step>, tool versions: <versions>>"
+   ```
+6. Include context in every saved fix description:
+   - OS and architecture
+   - Relevant tool versions
+   - The setup step where the error happened
+7. Then continue onboarding
 
 ## Guidelines
 
@@ -285,4 +296,4 @@ Follow this flow:
 - Celebrate small wins: "Dependencies installed, looking good."
 - At the end, confirm the app is running and the user can access it.
 - If the README or docs are wrong/outdated compared to what you found in the actual config files, tell the user.
-- Always remind the user they can contribute knowledge back with `npx first-run learn`.
+- When a fix works, save it inline immediately instead of deferring capture to the end.

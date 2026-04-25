@@ -9,6 +9,7 @@ import ora from "ora";
 import type { SetupPlan, SetupStep, KnownFix } from "../types.js";
 import { searchForFixes } from "../nia/search.js";
 import { saveFix } from "../nia/save.js";
+import { profileMachine } from "../profiler/machine.js";
 
 export async function runPlan(plan: SetupPlan): Promise<void> {
   const rl = createInterface({ input, output });
@@ -114,6 +115,7 @@ async function attemptFixFlow(
   errorOutput: string,
   rl: ReturnType<typeof createInterface>
 ): Promise<boolean> {
+  const errorPattern = summarizeError(errorOutput);
   const fixes = await findFixes(errorOutput);
 
   if (fixes.length > 0) {
@@ -143,6 +145,12 @@ async function attemptFixFlow(
         if (rerun.success) {
           step.status = "success";
           console.log(chalk.green(`Step ${step.id} passed after applying the fix.`));
+          await saveResolvedFix({
+            errorPattern,
+            fix: selectedFix.fix || selectedFix.errorPattern,
+            command: selectedFix.command,
+            stepName: step.name,
+          });
           console.log("");
           return true;
         }
@@ -160,7 +168,7 @@ async function attemptFixFlow(
     .toLowerCase();
 
   if (shouldSave === "y" || shouldSave === "yes") {
-    await promptToSaveFix(step, errorOutput, rl);
+    await promptToSaveFix(step, errorPattern, rl);
   }
 
   return false;
@@ -176,7 +184,7 @@ async function findFixes(errorOutput: string): Promise<KnownFix[]> {
 
 async function promptToSaveFix(
   step: SetupStep,
-  errorOutput: string,
+  errorPattern: string,
   rl: ReturnType<typeof createInterface>
 ): Promise<void> {
   const fixDescription = (await rl.question(chalk.cyan("What fixed it? "))).trim();
@@ -185,13 +193,43 @@ async function promptToSaveFix(
   }
 
   const fixCommand = (await rl.question(chalk.cyan("Command used (optional): "))).trim();
+  const shouldVerify = (await rl.question(chalk.cyan("Re-run the step to verify before saving? [Y/n] ")))
+    .trim()
+    .toLowerCase();
 
+  if (shouldVerify !== "n" && shouldVerify !== "no") {
+    const rerun = await runStep(step);
+    if (!rerun.success) {
+      step.status = "failed";
+      console.log(chalk.yellow("The step still failed, so the fix note was not saved."));
+      console.log(chalk.red(rerun.output || `Step ${step.id} failed again.`));
+      return;
+    }
+
+    step.status = "success";
+    console.log(chalk.green(`Step ${step.id} passed after verifying the fix.`));
+  }
+
+  await saveResolvedFix({
+    errorPattern,
+    fix: fixDescription,
+    command: fixCommand || undefined,
+    stepName: step.name,
+  });
+}
+
+async function saveResolvedFix(fix: Pick<KnownFix, "errorPattern" | "fix" | "command" | "stepName">): Promise<void> {
   try {
+    const machine = await profileMachine();
+    const toolVersions = Object.fromEntries(
+      Object.entries(machine.tools).filter((entry): entry is [string, string] => entry[1] !== null),
+    );
+
     await saveFix({
-      errorPattern: summarizeError(errorOutput),
-      fix: fixDescription,
-      command: fixCommand || undefined,
-      stepName: step.name,
+      ...fix,
+      os: machine.os,
+      arch: machine.arch,
+      toolVersions,
       createdAt: new Date().toISOString(),
     });
     console.log(chalk.green("Saved fix note."));
