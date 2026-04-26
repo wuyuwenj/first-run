@@ -2,6 +2,8 @@
 
 Get any repo running locally. Community-powered setup that gets smarter over time.
 
+Every tip, every fix, every gotcha that any developer hits — it stays in the knowledge base. So the first person to set up this repo might take an hour. The tenth person? Maybe five minutes. Because they're not starting from scratch — they're building on what everyone before them already figured out.
+
 `first-run` installs Claude Code skills and hooks into your project so that contributors can type `/onboard` and get guided through setup — with errors automatically diagnosed and fixes saved to a shared knowledge base powered by [Nia](https://trynia.ai).
 
 ## Install locally (for development)
@@ -61,6 +63,35 @@ Open Claude Code in the project and type:
 ```
 
 Claude will scan the repo, check your machine, install dependencies, configure env vars, and start the dev server — searching the community knowledge base for known fixes along the way.
+
+### When you hit an error — `/diagnose`
+
+```
+/diagnose npm install fails with "Missing required environment variable: DIRECT_URL"
+```
+
+When you hit an error, `/diagnose` searches a database of fixes from every developer who's worked on this repo before you. If someone already hit the same problem and solved it, you get their fix instantly — no Googling, no asking in Slack.
+
+You don't even need to type it — the error detection hook automatically triggers the diagnose flow whenever a command fails. Claude will:
+
+1. Search the Nia knowledge base for known fixes
+2. Apply the fix if one exists, or debug manually
+3. Verify the fix works
+4. Save the fix so the next person benefits
+
+### Share what you learned — `/upload-knowledge`
+
+```
+/upload-knowledge
+```
+
+Found something useful? A gotcha, a tip, a workaround? Save it so the next developer doesn't have to figure it out again. Claude will walk you through capturing what you learned with the right category and context.
+
+You can also save knowledge directly from the CLI:
+
+```bash
+first-run save -t "Prisma needs .env for DIRECT_URL" -c "Prisma CLI reads .env, not .env.local" --category gotcha
+```
 
 ### CLI commands
 
