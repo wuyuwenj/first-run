@@ -3,9 +3,11 @@
 import { execa } from "execa";
 import type { KnownFix } from "../types.js";
 import { getNiaArgs } from "./config.js";
+import { getRepoName } from "./project.js";
 
 export async function saveFix(fix: KnownFix): Promise<void> {
   const title = `Fix: ${fix.errorPattern}`;
+  const repoName = await getRepoName();
 
   const meta: Record<string, string> = {};
   if (fix.os) meta.os = fix.os;
@@ -30,7 +32,7 @@ export async function saveFix(fix: KnownFix): Promise<void> {
     .filter(Boolean)
     .join("\n");
 
-  const tags = ["setup-fix", fix.os, fix.arch, fix.stepName].filter(
+  const tags = ["setup-fix", fix.os, fix.arch, fix.stepName, repoName].filter(
     (t): t is string => !!t,
   );
 
@@ -57,8 +59,11 @@ export async function saveKnowledge(
   category: string,
   tags?: string[],
 ): Promise<void> {
+  const repoName = await getRepoName();
   const summary = `${category}: ${title}`;
-  const allTags = [category, ...(tags ?? [])];
+  const allTags = [category, ...(tags ?? []), repoName].filter(
+    (t): t is string => !!t,
+  );
   const args = [
     "contexts", "save", title,
     "--summary", summary,

@@ -3,9 +3,13 @@
 import { execa } from "execa";
 import type { KnownFix } from "../types.js";
 import { getNiaArgs } from "./config.js";
+import { getRepoName } from "./project.js";
 
 export async function searchForFixes(errorMessage: string): Promise<KnownFix[]> {
-  const result = await execa("nia", getNiaArgs(["contexts", "search", errorMessage]));
+  const repoName = await getRepoName();
+  const args = ["contexts", "search", errorMessage];
+  if (repoName) args.push("--tags", repoName);
+  const result = await execa("nia", getNiaArgs(args));
   const output = result.stdout.trim();
   if (!output) return [];
 
@@ -37,8 +41,11 @@ export async function searchForFixes(errorMessage: string): Promise<KnownFix[]> 
 }
 
 export async function searchRepo(query: string): Promise<string> {
-  // Search contexts first (where first-run saves knowledge)
-  const contextResult = await execa("nia", getNiaArgs(["contexts", "search", query]));
+  // Search contexts first (where first-run saves knowledge), scoped to this repo
+  const repoName = await getRepoName();
+  const searchArgs = ["contexts", "search", query];
+  if (repoName) searchArgs.push("--tags", repoName);
+  const contextResult = await execa("nia", getNiaArgs(searchArgs));
   const contextOutput = contextResult.stdout.trim();
   if (contextOutput && !contextOutput.startsWith("No matching")) {
     // Extract context IDs and fetch full content
