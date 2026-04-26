@@ -42,6 +42,7 @@ Run this in your repo to install the skills, hooks, and index the repo in Nia:
 ```bash
 first-run init
 ```
+<img width="811" height="656" alt="image" src="https://github.com/user-attachments/assets/87962543-b269-4769-99ef-eee25ae5524d" />
 
 This installs:
 - `.claude/skills/onboard/SKILL.md` — guided setup skill
@@ -61,6 +62,9 @@ Open Claude Code in the project and type:
 ```
 /onboard
 ```
+<img width="1333" height="1051" alt="image" src="https://github.com/user-attachments/assets/2fc28933-1b94-4f6b-ba11-0def06f58e36" />
+<img width="962" height="610" alt="image" src="https://github.com/user-attachments/assets/69d05f27-483f-4de0-92dd-e1fb8b9e9066" />
+
 
 Claude will scan the repo, check your machine, install dependencies, configure env vars, and start the dev server — searching the community knowledge base for known fixes along the way.
 
@@ -69,6 +73,8 @@ Claude will scan the repo, check your machine, install dependencies, configure e
 ```
 /diagnose npm install fails with "Missing required environment variable: DIRECT_URL"
 ```
+<img width="1271" height="547" alt="image" src="https://github.com/user-attachments/assets/842436e8-7e51-4972-8d2b-2d4dd31a97b8" />
+
 
 When you hit an error, `/diagnose` searches a database of fixes from every developer who's worked on this repo before you. If someone already hit the same problem and solved it, you get their fix instantly — no Googling, no asking in Slack.
 
@@ -84,6 +90,9 @@ You don't even need to type it — the error detection hook automatically trigge
 ```
 /upload-knowledge
 ```
+<img width="1219" height="385" alt="image" src="https://github.com/user-attachments/assets/a86e3153-6eb9-48e7-87aa-0f9263acb851" />
+<img width="1210" height="610" alt="image" src="https://github.com/user-attachments/assets/ffeeb711-cafb-498a-88c7-913be74db9a8" />
+
 
 Found something useful? A gotcha, a tip, a workaround? Save it so the next developer doesn't have to figure it out again. Claude will walk you through capturing what you learned with the right category and context.
 
